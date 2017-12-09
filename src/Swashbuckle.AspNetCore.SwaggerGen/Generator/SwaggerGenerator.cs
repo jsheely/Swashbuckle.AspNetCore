@@ -5,6 +5,8 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Swashbuckle.AspNetCore.Swagger;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
+using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace Swashbuckle.AspNetCore.SwaggerGen
 {
@@ -166,6 +168,23 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
             ISchemaRegistry schemaRegistry)
         {
             var location = GetParameterLocation(apiDescription, paramDescription);
+            SwaggerDescriptionAttribute description = null;
+            var propertyAttributes = ((DefaultModelMetadata)paramDescription.ModelMetadata)?
+                .Attributes?.PropertyAttributes;
+            if (propertyAttributes != null)
+            {
+                description = propertyAttributes.OfType<SwaggerDescriptionAttribute>().FirstOrDefault();
+            }
+            else
+            {
+
+                // Unable to find netstandard1.6 equivilent to get parameter reflection attributes.
+#if NETSTANDARD2_0
+
+                description = ((ControllerParameterDescriptor)paramDescription.ParameterDescriptor)
+                    .ParameterInfo.GetCustomAttributes(false).OfType<SwaggerDescriptionAttribute>().FirstOrDefault();
+#endif
+            }
 
             var name = _settings.DescribeAllParametersInCamelCase
                 ? paramDescription.Name.ToCamelCase()
@@ -178,7 +197,8 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
                 return new BodyParameter
                 {
                     Name = name,
-                    Schema = schema
+                    Schema = schema,
+                    Description = description?.Description
                 };
             }
 
@@ -186,7 +206,8 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
             {
                 Name = name,
                 In = location,
-                Required = (location == "path") || paramDescription.IsRequired()
+                Required = (location == "path") || paramDescription.IsRequired(),
+                Description = description?.Description
             };
 
             if (schema == null)
