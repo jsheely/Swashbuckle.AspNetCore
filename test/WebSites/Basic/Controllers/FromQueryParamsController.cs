@@ -8,7 +8,8 @@ namespace Basic.Controllers
     public class FromQueryParamsController
     {
         [HttpGet("addresses/validate")]
-        public IActionResult ValidateAddress([FromQuery]Address address)
+        [SwaggerDescription("This method validates addresses")]
+        public IActionResult ValidateAddress([FromQuery]Address address, [FromQuery, SwaggerDescription("Test Boolean Description")]bool flag)
         {
             return new NoContentResult(); 
         }
@@ -22,10 +23,8 @@ namespace Basic.Controllers
 
     public class Address
     {
-        /// <summary>
-        /// 3-letter ISO country code
-        /// </summary>
         [Required]
+        [SwaggerDescription("3-letter ISO country code")]
         public string Country { get; set; }
 
         /// <summary>
