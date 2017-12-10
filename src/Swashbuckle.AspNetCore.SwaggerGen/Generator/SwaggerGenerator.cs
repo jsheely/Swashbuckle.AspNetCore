@@ -52,11 +52,18 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
 
             IList<Tag> tags = apiDescriptions
                 .Select(x => x.ControllerInfo())
-                .Select(x => x.GetCustomAttributes(false).OfType<SwaggerTagAttribute>().FirstOrDefault())
-                .Select(x => x?.Tag)
-                .Where(x => x != null)
+                .Select(x =>
+                {
+                    var attrib = x.GetCustomAttributes(false).OfType<SwaggerTagAttribute>().FirstOrDefault();
+                    if (attrib?.Name == "")
+                    {
+                        attrib.Name = x.Name;
+                    }
+                    return attrib != null ? attrib.Tag : new Tag() { Name = x.Name.Replace("Controller", "") };
+                })
                 .GroupBy(x => x.Name)
                 .Select(g => g.First())
+                .OrderBy(x => x.Name)
                 .ToList();
 
             var swaggerDoc = new SwaggerDocument
