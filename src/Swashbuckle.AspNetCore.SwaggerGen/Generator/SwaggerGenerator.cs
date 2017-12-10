@@ -141,11 +141,17 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
                     apiResponseType => apiResponseType.StatusCode.ToString(),
                     apiResponseType => CreateResponse(apiResponseType, schemaRegistry)
                  );
-
-            var description = ((ControllerActionDescriptor)apiDescription.ActionDescriptor)
-                .MethodInfo.GetCustomAttributes(false)
-                .OfType<SwaggerDescriptionAttribute>().FirstOrDefault();
-
+            SwaggerDescriptionAttribute description = null;
+#if NETSTANDARD1_6
+            description = ((ControllerActionDescriptor)apiDescription.ActionDescriptor)
+                .MethodInfo.CustomAttributes.FirstOrDefault(x => x.AttributeType == typeof(SwaggerDescriptionAttribute))?
+                .ConstructorArguments?.Select(x => new SwaggerDescriptionAttribute() { Description = x.Value.ToString()}).FirstOrDefault();
+#endif
+#if NETSTANDARD2_0
+                        description = ((ControllerActionDescriptor)apiDescription.ActionDescriptor)
+                            .MethodInfo.GetCustomAttributes(false)
+                            .OfType<SwaggerDescriptionAttribute>().FirstOrDefault();
+#endif
             var operation = new Operation
             {
                 Tags = new[] { _settings.TagSelector(apiDescription) },
