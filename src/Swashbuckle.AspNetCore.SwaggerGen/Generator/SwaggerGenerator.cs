@@ -142,6 +142,10 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
                     apiResponseType => CreateResponse(apiResponseType, schemaRegistry)
                  );
 
+            var description = ((ControllerActionDescriptor)apiDescription.ActionDescriptor)
+                .MethodInfo.GetCustomAttributes(false)
+                .OfType<SwaggerDescriptionAttribute>().FirstOrDefault();
+
             var operation = new Operation
             {
                 Tags = new[] { _settings.TagSelector(apiDescription) },
@@ -150,6 +154,7 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
                 Produces = apiDescription.SupportedResponseMediaTypes().ToList(),
                 Parameters = parameters.Any() ? parameters : null, // parameters can be null but not empty
                 Responses = responses,
+                Description = description?.Description,
                 Deprecated = apiDescription.IsObsolete() ? true : (bool?)null
             };
 
