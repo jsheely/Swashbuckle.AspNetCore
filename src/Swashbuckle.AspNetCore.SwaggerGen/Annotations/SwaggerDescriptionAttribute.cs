@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Swashbuckle.AspNetCore.SwaggerGen
+namespace Swashbuckle.AspNetCore.SwaggerGen.Annotations
 {
     
     public class SwaggerDescriptionAttribute : Attribute

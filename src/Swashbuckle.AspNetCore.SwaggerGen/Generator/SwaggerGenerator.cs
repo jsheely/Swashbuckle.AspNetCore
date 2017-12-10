@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Swashbuckle.AspNetCore.Swagger;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Swashbuckle.AspNetCore.SwaggerGen.Annotations;
+using System.Reflection;
 
 namespace Swashbuckle.AspNetCore.SwaggerGen
 {
@@ -48,6 +50,15 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
                 .GroupBy(apiDesc => apiDesc.RelativePathSansQueryString())
                 .ToDictionary(group => "/" + group.Key, group => CreatePathItem(group, schemaRegistry));
 
+            IList<Tag> tags = apiDescriptions
+                .Select(x => x.ControllerInfo())
+                .Select(x => x.GetCustomAttributes(false).OfType<SwaggerTagAttribute>().FirstOrDefault())
+                .Select(x => x?.Tag)
+                .Where(x => x != null)
+                .GroupBy(x => x.Name)
+                .Select(g => g.First())
+                .ToList();
+
             var swaggerDoc = new SwaggerDocument
             {
                 Info = info,
@@ -55,6 +66,7 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
                 BasePath = basePath,
                 Schemes = schemes,
                 Paths = paths,
+                Tags = tags,
                 Definitions = schemaRegistry.Definitions,
                 SecurityDefinitions = _settings.SecurityDefinitions
             };
@@ -141,17 +153,13 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
                     apiResponseType => apiResponseType.StatusCode.ToString(),
                     apiResponseType => CreateResponse(apiResponseType, schemaRegistry)
                  );
-            SwaggerDescriptionAttribute description = null;
-#if NETSTANDARD1_6
-            description = ((ControllerActionDescriptor)apiDescription.ActionDescriptor)
-                .MethodInfo.CustomAttributes.FirstOrDefault(x => x.AttributeType == typeof(SwaggerDescriptionAttribute))?
-                .ConstructorArguments?.Select(x => new SwaggerDescriptionAttribute() { Description = x.Value.ToString()}).FirstOrDefault();
-#endif
-#if NETSTANDARD2_0
-                        description = ((ControllerActionDescriptor)apiDescription.ActionDescriptor)
-                            .MethodInfo.GetCustomAttributes(false)
-                            .OfType<SwaggerDescriptionAttribute>().FirstOrDefault();
-#endif
+
+
+            SwaggerDescriptionAttribute description = apiDescription.ActionMethodInfo()
+                .GetCustomAttributes(false)
+                .OfType<SwaggerDescriptionAttribute>()
+                .FirstOrDefault();
+
             var operation = new Operation
             {
                 Tags = new[] { _settings.TagSelector(apiDescription) },
@@ -184,18 +192,17 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
                 .Attributes?.PropertyAttributes;
             if (propertyAttributes != null)
             {
+                // Handles model property descriptions
                 description = propertyAttributes.OfType<SwaggerDescriptionAttribute>().FirstOrDefault();
             }
             else
             {
-
-                // Unable to find netstandard1.6 equivilent to get parameter reflection attributes.
-#if NETSTANDARD2_0
-
-                description = ((ControllerParameterDescriptor)paramDescription.ParameterDescriptor)
-                    .ParameterInfo.GetCustomAttributes(false).OfType<SwaggerDescriptionAttribute>().FirstOrDefault();
-#endif
+                // Handles method parameter descriptions
+                description = apiDescription.ActionMethodInfo().GetParameters()
+                .FirstOrDefault(x => x.Name == paramDescription.Name)?.GetCustomAttributes(false)
+                .OfType<SwaggerDescriptionAttribute>().FirstOrDefault();
             }
+
 
             var name = _settings.DescribeAllParametersInCamelCase
                 ? paramDescription.Name.ToCamelCase()
